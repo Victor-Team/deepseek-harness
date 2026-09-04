@@ -426,6 +426,14 @@ describe('task admission and package contracts', () => {
       .toThrow('must not be empty')
   })
 
+  it('places a supplied persona before the task text without making an empty task valid', () => {
+    expect(textTask([{ type: 'text', text: 'one' }], '你是「体系派」。'))
+      .toEqual(['你是「体系派」。', 'one'])
+    expect(textTask([{ type: 'text', text: 'one' }])).toEqual(['one'])
+    expect(() => textTask([{ type: 'text', text: ' \n ' }], '你是「体系派」。'))
+      .toThrow('must not be empty')
+  })
+
   it('registers the default descriptor, validates config, and unregisters on HMR', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionProjectionRegistry)
@@ -439,7 +447,7 @@ describe('task admission and package contracts', () => {
         outputSchema: false,
         depthLimit: false,
         toolFilter: false,
-        persona: false,
+        persona: true,
       },
       inheritsParentContext: false,
     })

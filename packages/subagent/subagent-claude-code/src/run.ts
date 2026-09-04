@@ -306,6 +306,7 @@ export async function disposeClaudeCodeChild(
  * @param controller - per-run cancellation owner.
  * @param capture - receives the shared child and SDK-facing process synchronously.
  * @param captureDiagnostic - receives safe facts from unattended interaction callbacks.
+ * @param persona - per-child persona appended to the native Claude Code preset; omission leaves that preset alone.
  * @returns options that inherit native settings while disabling persistence and user questions.
  */
 export function claudeQueryOptions(
@@ -316,11 +317,15 @@ export function claudeQueryOptions(
     process: ManagedClaudeCodeProcess,
   ) => void,
   captureDiagnostic: (diagnostic: string) => void,
+  persona?: string,
 ): Options {
   return {
     abortController: controller,
     cwd: spec.cwd,
     ...spec.model === undefined ? {} : { model: spec.model },
+    ...persona === undefined
+      ? {}
+      : { systemPrompt: { type: 'preset' as const, preset: 'claude_code' as const, append: persona } },
     env: { ...scrubbedParentEnv(), ...spec.env },
     persistSession: false,
     disallowedTools: spec.permissionMode === 'plan'
@@ -430,6 +435,7 @@ export async function startClaudeCodeRun(
         controller,
         captureChild,
         capturePermissionDiagnostic,
+        request.persona,
       ),
     })
     if (child === undefined || child.pid <= 0) {

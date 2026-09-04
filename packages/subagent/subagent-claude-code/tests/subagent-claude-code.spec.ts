@@ -424,7 +424,7 @@ describe('task admission and package contracts', () => {
         outputSchema: false,
         depthLimit: false,
         toolFilter: false,
-        persona: false,
+        persona: true,
       },
       inheritsParentContext: false,
     })
@@ -962,6 +962,31 @@ describe('query options and result mapping', () => {
       }
     },
   )
+
+  it('appends a supplied persona to the native preset and omits the option without one', () => {
+    const child = fakeChild()
+    const spec = {
+      cwd: '/workspace',
+      permissionMode: 'dontAsk' as const,
+      env: {},
+      disposeGraceMs: 17,
+      spawn: () => child.handle,
+    }
+    const withPersona = claudeQueryOptions(
+      spec,
+      new AbortController(),
+      () => {},
+      () => {},
+      '你是智囊团成员「体系派」。',
+    )
+    expect(withPersona.systemPrompt).toEqual({
+      type: 'preset',
+      preset: 'claude_code',
+      append: '你是智囊团成员「体系派」。',
+    })
+    const without = claudeQueryOptions(spec, new AbortController(), () => {}, () => {})
+    expect(without).not.toHaveProperty('systemPrompt')
+  })
 
   it('disallows ExitPlanMode before native plan-mode allow rules', () => {
     const child = fakeChild()

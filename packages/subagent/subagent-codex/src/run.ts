@@ -161,10 +161,15 @@ function thrown(value: unknown): Error {
 
 /**
  * Validate and preserve the one-shot task before crossing the process boundary.
+ *
+ * The app-server protocol has no custom system-prompt field, so a persona
+ * becomes the task's leading text block rather than a system instruction. It is
+ * applied after validation, so it cannot make an empty task valid.
  * @param prompt - task content accepted from the shared subagent service.
- * @returns the exact non-empty text block sequence.
+ * @param persona - optional per-child persona placed before the task text.
+ * @returns the exact non-empty text block sequence, persona first when supplied.
  */
-export function textTask(prompt: readonly ContentBlock[]): string[] {
+export function textTask(prompt: readonly ContentBlock[], persona?: string): string[] {
   if (prompt.length === 0) {
     throw new Error('subagent-codex: the one-shot task must contain only text blocks')
   }
@@ -178,7 +183,7 @@ export function textTask(prompt: readonly ContentBlock[]): string[] {
   if (texts.every(text => text.trim().length === 0)) {
     throw new Error('subagent-codex: the one-shot task must not be empty')
   }
-  return texts
+  return persona === undefined ? texts : [persona, ...texts]
 }
 
 /**
@@ -231,7 +236,7 @@ export async function startCodexRun(
   request: SubagentStartRequest,
   spec: CodexRunSpec,
 ): Promise<SubagentRun> {
-  const texts = textTask(request.prompt)
+  const texts = textTask(request.prompt, request.persona)
   if (request.signal.aborted) {
     throw new Error('subagent-codex: request was aborted before app-server startup')
   }

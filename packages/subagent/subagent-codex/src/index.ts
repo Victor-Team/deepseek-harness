@@ -61,7 +61,7 @@ export const Config: z<Config> = z.object({
 type ResolvedConfig = Omit<Required<Config>, 'model'> & Pick<Config, 'model'>
 
 class CodexProvider implements SubagentProvider {
-  readonly capabilities: SubagentCapabilities = NO_START_CAPABILITIES
+  readonly capabilities: SubagentCapabilities = { ...NO_START_CAPABILITIES, persona: true }
   readonly inheritsParentContext = false
 
   constructor(
