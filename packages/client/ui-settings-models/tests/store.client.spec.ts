@@ -92,6 +92,12 @@ function api(overrides: {
         ?? (() => Promise.resolve(remoteOk({ writable: true, hasDocument: false, namespaces: NAMESPACES }))),
       mutate: () => Promise.resolve(remoteFail('the store spec issues no writes')),
     },
+    authorization: {
+      list: () => Promise.resolve(remoteOk([])),
+      start: () => { throw new Error('this fixture runs no sign-in') },
+      answer: () => Promise.resolve(remoteOk(undefined)),
+      cancel: () => Promise.resolve(remoteOk(undefined)),
+    },
     credentials: {
       describe: (refs: readonly string[]) => {
         seenRefs.push([...refs])

@@ -115,6 +115,12 @@ function harness(options: {
       })),
       mutate,
     },
+    authorization: {
+      list: () => Promise.resolve(remoteOk([])),
+      start: () => { throw new Error('this fixture runs no sign-in') },
+      answer: () => Promise.resolve(remoteOk(undefined)),
+      cancel: () => Promise.resolve(remoteOk(undefined)),
+    },
     credentials: {
       describe: () => options.describeFailure === undefined
         ? Promise.resolve(remoteOk({

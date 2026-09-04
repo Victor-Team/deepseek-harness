@@ -9,6 +9,7 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {
+  AuthorizationEntryView,
   CredentialInfo, LlmConfigurableProvider, LlmProviderInfo, SettingsNamespaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -99,6 +100,12 @@ export interface ModelsSettingsState {
   rows: readonly ProviderRow[]
   /** Namespace views by ns, for the editor's schema/layers/secrets. */
   namespaces: ReadonlyMap<string, SettingsNamespaceView>
+  /**
+   * The sign-in each provider route offers, keyed by that route. Loaded with
+   * the directory rather than per card, so a row and its sign-in reach the page
+   * in one render.
+   */
+  signIns: ReadonlyMap<string, AuthorizationEntryView>
 }
 
 /**
@@ -149,7 +156,13 @@ function apiKeyEnvOf(
 export class ModelsSettingsStore {
   /** The snapshot the section renders from (uSES-safe store). */
   readonly store: SnapshotStore<ModelsSettingsState> = createSnapshotStore<ModelsSettingsState>({
-    status: 'idle', error: null, credentialError: null, writable: false, rows: [], namespaces: new Map(),
+    status: 'idle',
+    error: null,
+    credentialError: null,
+    writable: false,
+    rows: [],
+    namespaces: new Map(),
+    signIns: new Map(),
   })
 
   /** Latest load wins; an older response never overwrites a newer one. */
@@ -178,10 +191,11 @@ export class ModelsSettingsStore {
   async load(): Promise<void> {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading'; s.error = null })
-    const [registered, declared] = await Promise.all([
+    const [registered, declared, , offered] = await Promise.all([
       this.ctx.remote.llm.listProviders(),
       this.ctx.remote.llm.listConfigurableProviders(),
       this.describeFace.ensure(),
+      this.ctx.remote.authorization.list(),
     ])
     if (!registered.ok) { this.failLoad(generation, registered.error.message); return }
     if (!declared.ok) { this.failLoad(generation, declared.error.message); return }
@@ -227,6 +241,9 @@ export class ModelsSettingsStore {
       s.error = null
       s.credentialError = credentialError
       s.writable = writable
+      // A deployment mounting no authorization registry offers no sign-in; the
+      // page then renders exactly as one whose providers all take a key.
+      s.signIns = new Map(offered.ok ? offered.value.map(entry => [entry.subject, entry]) : [])
       s.rows = rows.map((row) => {
         const named = row.apiKeyEnv === undefined ? undefined : credentials[row.apiKeyEnv]
         const derived = row.apiKeyEnv !== undefined ? undefined : credentials[deriveKeyRef(row.entry.provider)]

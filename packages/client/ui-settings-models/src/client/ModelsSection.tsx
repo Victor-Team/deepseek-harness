@@ -24,6 +24,7 @@ import type { ModelsSettingsStore, ProviderRow } from './store.ts'
 import type { ModelsOperations } from './operations.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 import { ProviderEditor, type ProviderEditorProps } from './ProviderEditor.tsx'
+import { SignInPanel } from './SignInPanel.tsx'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
 
@@ -416,6 +417,20 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                     : null}
                 </span>
               </div>
+              {(() => {
+                const signIn = state.signIns.get(row.entry.provider)
+                return signIn === undefined
+                  ? null
+                  : (
+                    <SignInPanel
+                      entry={signIn}
+                      t={t}
+                      operations={operations}
+                      readOnly={!state.writable}
+                      onAuthorized={() => { void controller.load() }}
+                    />
+                  )
+              })()}
               {renderSlot(
                 'settings.models.provider-card',
                 { provider: row.entry, configured: row.configured, keyConfigured: keyConfiguredOf(row) },
