@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-subscription-sign-in-surface.md
+2026-09-04-subscription-sign-in-surface.md: e0edf8df73d3bbd6ce8678a3de107a09513b6316
+2026-09-04-subscription-sign-in-surface.zh.md: 3a8b15afa4d664bbacc7df9548f066324002d402
