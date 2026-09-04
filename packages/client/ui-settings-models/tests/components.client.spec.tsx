@@ -415,6 +415,50 @@ describe('ModelsSection', () => {
     expect(view.getByText(en.signInAuthorized)).toBeTruthy()
   })
 
+  it('answers a sign-in choice with the option id the flow named', async () => {
+    const scripted = scriptedFace()
+    let release = (): void => {}
+    scripted.face.authorization.start.mockImplementation(() => (async function* stream() {
+      yield {
+        kind: 'prompt',
+        promptId: 'p9',
+        promptKind: 'select',
+        message: 'Select OpenAI Codex login method:',
+        options: [
+          { id: 'browser', label: 'Browser login (default)' },
+          { id: 'device-code', label: 'Device code login (headless)' },
+        ],
+      }
+      await new Promise<void>((resolve) => { release = resolve })
+      yield { kind: 'settled', outcome: 'authorized' }
+    })())
+    const { view } = await mountFace(scripted)
+
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', {
+        name: en.signInWith.replace('{method}', 'OpenAI (ChatGPT Plus/Pro)'),
+      }))
+      await Promise.resolve()
+    })
+
+    // A choice is a list to pick from, not a box to guess into.
+    const choice = view.getByLabelText('Select OpenAI Codex login method:') as HTMLSelectElement
+    expect([...choice.options].map(option => option.textContent))
+      .toEqual(['Browser login (default)', 'Device code login (headless)'])
+    await act(async () => {
+      fireEvent.change(choice, { target: { value: 'device-code' } })
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', { name: en.signInAnswer }))
+      await Promise.resolve()
+      release()
+      await Promise.resolve()
+    })
+
+    expect(scripted.face.authorization.answer).toHaveBeenCalledWith('p9', 'device-code')
+  })
+
   it('renders the unkeyed whole-section provider as an open setup card in the first-run posture', async () => {
     await mountFirstRun()
     // Nothing is reachable yet, and DeepSeek has no configured credential and

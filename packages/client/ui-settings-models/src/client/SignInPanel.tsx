@@ -41,6 +41,8 @@ interface OpenPrompt {
   readonly message: string
   readonly secret: boolean
   readonly placeholder?: string
+  /** Present for a choice; the answer is the chosen option's id. */
+  readonly options?: readonly { readonly id: string; readonly label: string; readonly description?: string }[]
 }
 
 /** Substitute `{name}` placeholders in one copy template. */
@@ -100,12 +102,15 @@ export function SignInPanel(props: SignInPanelProps): ReactNode {
           }])
           return
         case 'prompt':
-          setAnswer('')
+          // A choice answers with an option id, so the first option is the
+          // draft: the flow's own order puts its default first.
+          setAnswer(frame.options?.[0]?.id ?? '')
           setPrompt({
             promptId: frame.promptId,
             message: frame.message,
             secret: frame.promptKind === 'secret',
             ...frame.placeholder === undefined ? {} : { placeholder: frame.placeholder },
+            ...frame.options === undefined ? {} : { options: frame.options },
           })
           return
         case 'prompt-withdrawn':
@@ -187,15 +192,32 @@ export function SignInPanel(props: SignInPanelProps): ReactNode {
         : (
           <div className={styles['field']}>
             <span className={styles['fieldLabel']}>{prompt.message}</span>
-            <input
-              className={styles['input']}
-              type={prompt.secret ? 'password' : 'text'}
-              value={answer}
-              aria-label={prompt.message}
-              placeholder={prompt.placeholder ?? ''}
-              onChange={(event) => { setAnswer(event.target.value) }}
-              onKeyDown={(event) => { if (event.key === 'Enter') send() }}
-            />
+            {prompt.options === undefined
+              ? (
+                <input
+                  className={styles['input']}
+                  type={prompt.secret ? 'password' : 'text'}
+                  value={answer}
+                  aria-label={prompt.message}
+                  placeholder={prompt.placeholder ?? ''}
+                  onChange={(event) => { setAnswer(event.target.value) }}
+                  onKeyDown={(event) => { if (event.key === 'Enter') send() }}
+                />
+              )
+              : (
+                <select
+                  className={`${styles['input']} ${styles['selectInput']}`}
+                  value={answer}
+                  aria-label={prompt.message}
+                  onChange={(event) => { setAnswer(event.target.value) }}
+                >
+                  {prompt.options.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.description === undefined ? option.label : `${option.label} — ${option.description}`}
+                    </option>
+                  ))}
+                </select>
+              )}
             <button
               type="button"
               className={styles['secondaryButton']}
