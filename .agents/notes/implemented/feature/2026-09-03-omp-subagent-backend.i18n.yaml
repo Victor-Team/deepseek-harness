@@ -1,6 +1,0 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-03-omp-subagent-backend.md
-2026-09-03-omp-subagent-backend.md: 9f2bb71e56c72d9da3154347eb43aa638d7509e0
-2026-09-03-omp-subagent-backend.zh.md: 99b8317d1251a8cd31d8e8c4ca3d41011c4f1bf1
