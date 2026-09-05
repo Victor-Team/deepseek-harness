@@ -2446,6 +2446,43 @@ export interface Config {
 
 来源：[`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
 
+<a id="deepseek-aidsh-subagent-omp"></a>
+
+## `@deepseek-ai/dsh-subagent-omp`
+
+需要：`subagents` · `subprocess`
+
+```ts config-catalog
+/** Deployment-owned command, model, environment, and process-release settings. */
+export interface Config {
+  /** Provider name on `ctx.subagents` (default `omp`). */
+  providerName?: string
+  /** The omp executable to spawn; resolved through the host `PATH` unless absolute. */
+  command?: string
+  /** Arguments placed before this package's fixed RPC-mode flags. */
+  args?: string[]
+  /**
+   * Working-directory override for the child process; a relative value resolves
+   * against the harness launch directory at load. Omission uses the delegating
+   * parent session's workspace.
+   */
+  cwd?: string
+  /**
+   * Model id passed to the child as `--model`. Omission leaves omp's own
+   * selection — its configured role models and profile defaults — in force.
+   */
+  model?: string
+  /** Explicit child environment layered over the credential-scrubbed parent environment. */
+  env?: Record<string, string>
+  /** Grace in milliseconds after stdin EOF before process-tree termination begins. */
+  disposeEofGraceMs?: number
+  /** Grace in milliseconds between the process-tree termination tiers. */
+  disposeGraceMs?: number
+}
+```
+
+来源：[`packages/subagent/subagent-omp/src/index.ts:35`](../packages/subagent/subagent-omp/src/index.ts)
+
 <a id="deepseek-aidsh-subagent-spawn-in-process"></a>
 
 ## `@deepseek-ai/dsh-subagent-spawn-in-process`
