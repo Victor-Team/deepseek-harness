@@ -8,7 +8,7 @@ kind: "package-reference"
 
 ## 概述
 
-`@deepseek-ai/dsh-api-settings-controller` 为浏览器配置界面提供生成的 `ctx.remote.settings` 与 `ctx.remote.credentials` namespace。它返回脱敏的 settings 与凭据元数据，支持 settings 与凭据写入而不返回密钥值，并在 Host 桌面打开由 provider 持有的 settings 或 Agent preset 位置。provider 缺失时，namespace 仍会注册，并返回可操作的配置错误。
+`@deepseek-ai/dsh-api-settings-controller` 为浏览器配置界面提供生成的 `ctx.remote.settings`、`ctx.remote.credentials` 与 `ctx.remote.authorization` namespace。它返回脱敏的 settings 与凭据元数据，支持 settings 与凭据写入而不返回密钥值，并在 Host 桌面打开由 provider 持有的 settings 或 Agent preset 位置。provider 缺失时，namespace 仍会注册，并返回可操作的配置错误。
 
 ## 目录
 
@@ -28,6 +28,8 @@ kind: "package-reference"
 `describe(refs)` 以请求的名字为键返回一份 map，因此设置页描述其各行携带的全部引用时，这些行会一起落定。单次调用最多接受 64 个名字，无效名字或空写入值报告为 `bad-request`，并逐字段复制每个答案——provider 返回超出 `CredentialInfo` 声明的内容也无法扩大跨越 wire 的字段。有效的 `set(ref, value)` 与 `unset(ref)` 调用把 provider 拒绝报告为 `credential-rejected`，携带 provider 的消息，details 中只有该引用。密钥值只在这个方向跨越 wire：这里没有任何方法会返回它。
 
 `settings.describe()` 返回部署信息，以及在 `redactSecrets: true` 下读取的所有 namespace。`settings.update`、`settings.replace` 与 `settings.mutate` 暴露 settings service 的三种写入操作，并返回该 namespace 的新脱敏视图；过期写入使用 `settings-conflict`，其他 provider 拒绝使用 `settings-rejected`。
+
+`authorization.list()` 列出本部署提供的每一项登录，既按凭据 key 标识，也标明它授权的是哪条路由，因此模型页能把登录挂到它所属的那一行上。`authorization.start(key, method)` 以流的形式跑一次登录尝试：`notice` 帧说明要打开什么，`prompt` 帧提出问题、由页面用 `authorization.answer(promptId, value)` 作答，最后恰好一条 `settled` 帧报告 `authorized`、`cancelled` 或 `failed`。这条流就是这次尝试——关闭它即撤回登录，并让仍在等待的问题被拒绝，因此关掉的页面不会留下一个悬着的流程——`authorization.cancel(key)` 则从第二次调用撤回它。订阅制路由只能经由这条路进入凭据库，因为它需要的授权是人回答提问换来的，而不是敲进去的密钥。
 
 `settings.openSettingsDocument()` 准备 provider 持有的文档，并用原生文本编辑器意图将其打开。`settings.canOpenAgentPresetDirectory()` 在 preset 页面显示时报告原生打开能力。`settings.openAgentPresetDirectory(id)` 只解析用户创作的 preset，并在原生打开不可用时返回目录路径；两个打开方法都不接受浏览器提供的文件系统目标。
 

@@ -7,6 +7,7 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {
+  AuthorizationEntryView, AuthorizationFrame,
   CredentialInfo, LlmDiscoveredModel, LlmModelDiscoveryRequest,
   SettingsNamespaceView, SettingsPathOpView,
 } from '@deepseek-ai/dsh-api-remotes/client'
@@ -71,6 +72,26 @@ export interface ModelsOperations {
    * @returns the candidates, or the refusal.
    */
   discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest): Promise<ModelDiscoveryOutcome>
+  /**
+   * Read every sign-in this deployment offers.
+   * @returns the offered sign-ins, or none when the Host mounts no registry.
+   */
+  listSignIns(): Promise<readonly AuthorizationEntryView[]>
+  /**
+   * Run one sign-in, yielding what it needs from the person watching.
+   * @param key - the sign-in's credential key.
+   * @param method - which method to run; the flow's first when omitted.
+   * @param signal - abort to withdraw the attempt; closing the iteration does the same.
+   * @returns notices and questions, then exactly one settled frame.
+   */
+  runSignIn(key: string, method: string | undefined, signal: AbortSignal): AsyncIterable<AuthorizationFrame>
+  /**
+   * Answer the question a running sign-in asked.
+   * @param promptId - identity carried by the question's frame.
+   * @param value - what the person typed or pasted.
+   * @returns the refusal message, or undefined once delivered.
+   */
+  answerSignIn(promptId: string, value: string): Promise<string | undefined>
 }
 
 /**
@@ -104,6 +125,17 @@ export function createModelsOperations(ctx: ClientContext): ModelsOperations {
       return response.ok
         ? { kind: 'found', models: response.value }
         : { kind: 'refused', message: response.error.message }
+    },
+    listSignIns: async () => {
+      const response = await ctx.remote.authorization.list()
+      // A deployment mounting no authorization registry offers no sign-in;
+      // the page renders the same as one whose providers all take a key.
+      return response.ok ? response.value : []
+    },
+    runSignIn: (key, method, signal) => ctx.remote.authorization.start(key, method, signal),
+    answerSignIn: async (promptId, value) => {
+      const response = await ctx.remote.authorization.answer(promptId, value)
+      return response.ok ? undefined : response.error.message
     },
   }
 }

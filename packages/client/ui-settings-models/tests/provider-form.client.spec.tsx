@@ -131,6 +131,12 @@ function scriptedFace(options: {
       describe: vi.fn(() => Promise.resolve(remoteOk({ writable: true, namespaces: [namespace] }))),
       mutate,
     },
+    authorization: {
+      list: () => Promise.resolve(remoteOk([])),
+      start: () => { throw new Error('this fixture runs no sign-in') },
+      answer: () => Promise.resolve(remoteOk(undefined)),
+      cancel: () => Promise.resolve(remoteOk(undefined)),
+    },
     credentials: {
       describe: vi.fn((refs: string[]) => Promise.resolve(remoteOk(
         Object.fromEntries(refs.map(ref => [ref, { configured: false, writable: true }])),

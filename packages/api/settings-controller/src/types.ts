@@ -25,6 +25,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
      * reference, never the value.
      */
     'credential/rejected': { readonly ref: string }
+    /** The named key is not a credential key this deployment can authorize. */
+    'authorization/invalid-key': { readonly key: string; readonly reason: string }
+    /** No running sign-in is waiting on the answered question. */
+    'authorization/not-waiting': { readonly promptId: string }
   }
 }
 
@@ -37,3 +41,59 @@ export interface SettingsDocumentOpenValue {
 export type AgentPresetDirectoryOpenValue =
   | { readonly opened: true }
   | { readonly opened: false; readonly path: string }
+
+/** One login method a sign-in offers, as a configuration page renders it. */
+export interface AuthorizationMethodView {
+  /** Method id passed back to start an attempt. */
+  readonly id: string
+  /** User-facing name, such as `Anthropic (Claude Pro/Max)`. */
+  readonly label: string
+}
+
+/** One registered sign-in as a configuration page reads it. */
+export interface AuthorizationEntryView {
+  /** Opaque credential key identifying this sign-in on later calls. */
+  readonly key: string
+  /**
+   * What the sign-in authorizes, in the vocabulary of the surface that shows
+   * it: for a provider route, the route id, which is how a Models page
+   * attaches a sign-in to the row it belongs to.
+   */
+  readonly subject: string
+  /** User-facing name of what is being authorized. */
+  readonly label: string
+  /** Whether an attempt for this sign-in is already running. */
+  readonly inFlight: boolean
+  /** The methods this sign-in offers, most preferred first. */
+  readonly methods: readonly AuthorizationMethodView[]
+}
+
+/** One choice offered by a `select` question. */
+export interface AuthorizationOptionView {
+  readonly id: string
+  readonly label: string
+  readonly description?: string
+}
+
+/**
+ * One thing a running sign-in has to say. A `prompt` frame is answered with
+ * `authorization.answer`; `prompt-withdrawn` retires a question the flow gave
+ * up on while the attempt continues; exactly one `settled` frame ends the
+ * stream.
+ */
+export type AuthorizationFrame =
+  | { readonly kind: 'notice'; readonly message: string; readonly url?: string; readonly code?: string }
+  | {
+    readonly kind: 'prompt'
+    readonly promptId: string
+    readonly promptKind: 'text' | 'secret' | 'select'
+    readonly message: string
+    readonly placeholder?: string
+    readonly options?: readonly AuthorizationOptionView[]
+  }
+  | { readonly kind: 'prompt-withdrawn'; readonly promptId: string }
+  | {
+    readonly kind: 'settled'
+    readonly outcome: 'authorized' | 'cancelled' | 'failed'
+    readonly message?: string
+  }

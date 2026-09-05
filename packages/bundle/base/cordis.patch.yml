@@ -97,6 +97,14 @@
     - id: credentials
       name: '@deepseek-ai/dsh-credentials-local'
 
+    # Interactive credentials: the registry a provider's sign-in registers its
+    # flow with, and the surface a configuration page runs an attempt through.
+    # Without it a subscription route — a Claude Pro/Max or ChatGPT Plus/Pro
+    # plan — has no way into the credential store, because the grant it needs
+    # is obtained by a person answering a prompt rather than by typing a key.
+    - id: authorization
+      name: '@deepseek-ai/dsh-authorization'
+
     # The pi-ai multi-provider twin, mounted dormant: zero routes (and no extra
     # models in the picker) until a `llm-pi-ai:` settings section supplies provider
     # profiles — then those routes register live, keys resolving per request

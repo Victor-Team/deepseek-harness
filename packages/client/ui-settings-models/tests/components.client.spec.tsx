@@ -189,6 +189,19 @@ function scriptedFace(overrides: {
       update,
       mutate,
     },
+    authorization: {
+      // One offered sign-in, on the row whose provider a sign-in test drives.
+      list: vi.fn(() => Promise.resolve(remoteOk([{
+        key: 'llm-pi-ai/openai',
+        subject: 'openai',
+        label: 'OpenAI',
+        inFlight: false,
+        methods: [{ id: 'oauth', label: 'OpenAI (ChatGPT Plus/Pro)' }],
+      }]))),
+      start: vi.fn(),
+      answer: vi.fn(() => Promise.resolve(remoteOk(undefined))),
+      cancel: vi.fn(() => Promise.resolve(remoteOk(undefined))),
+    },
     credentials: {
       // Typed as the Remote answer rather than the success branch alone: a
       // case that scripts a refusal replaces this mock.
@@ -366,6 +379,86 @@ describe('ModelsSection', () => {
     expect(screen.getByLabelText(en.keyInput)).toBeTruthy()
     expect(cardSeatCalls(renderSlot).some(([provider]) => provider === 'anthropic')).toBe(false)
   })
+  it('runs a subscription sign-in from the provider row and reports the grant', async () => {
+    const scripted = scriptedFace()
+    // Held open at the question so the assertions run while it is on screen;
+    // the answer the card sends releases it.
+    let release = (): void => {}
+    scripted.face.authorization.start.mockImplementation(() => (async function* stream() {
+      yield { kind: 'notice', message: 'Open the OpenAI page', url: 'https://example.test/auth' }
+      yield { kind: 'prompt', promptId: 'p1', promptKind: 'text', message: 'Paste the code' }
+      await new Promise<void>((resolve) => { release = resolve })
+      yield { kind: 'settled', outcome: 'authorized' }
+    })())
+    const { view } = await mountFace(scripted)
+
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', {
+        name: en.signInWith.replace('{method}', 'OpenAI (ChatGPT Plus/Pro)'),
+      }))
+      await Promise.resolve()
+    })
+    expect(view.getByText('Open the OpenAI page')).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.change(view.getByLabelText('Paste the code'), { target: { value: 'the-code' } })
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', { name: en.signInAnswer }))
+      await Promise.resolve()
+      release()
+      await Promise.resolve()
+    })
+
+    expect(scripted.face.authorization.answer).toHaveBeenCalledWith('p1', 'the-code')
+    expect(view.getByText(en.signInAuthorized)).toBeTruthy()
+  })
+
+  it('answers a sign-in choice with the option id the flow named', async () => {
+    const scripted = scriptedFace()
+    let release = (): void => {}
+    scripted.face.authorization.start.mockImplementation(() => (async function* stream() {
+      yield {
+        kind: 'prompt',
+        promptId: 'p9',
+        promptKind: 'select',
+        message: 'Select OpenAI Codex login method:',
+        options: [
+          { id: 'browser', label: 'Browser login (default)' },
+          { id: 'device-code', label: 'Device code login (headless)' },
+        ],
+      }
+      await new Promise<void>((resolve) => { release = resolve })
+      yield { kind: 'settled', outcome: 'authorized' }
+    })())
+    const { view } = await mountFace(scripted)
+
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', {
+        name: en.signInWith.replace('{method}', 'OpenAI (ChatGPT Plus/Pro)'),
+      }))
+      await Promise.resolve()
+    })
+
+    // A choice is a list to pick from, not a box to guess into.
+    const choice = view.getByLabelText('Select OpenAI Codex login method:') as HTMLSelectElement
+    expect([...choice.options].map(option => option.textContent))
+      .toEqual(['Browser login (default)', 'Device code login (headless)'])
+    await act(async () => {
+      fireEvent.change(choice, { target: { value: 'device-code' } })
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', { name: en.signInAnswer }))
+      await Promise.resolve()
+      release()
+      await Promise.resolve()
+    })
+
+    expect(scripted.face.authorization.answer).toHaveBeenCalledWith('p9', 'device-code')
+  })
+
   it('renders the unkeyed whole-section provider as an open setup card in the first-run posture', async () => {
     await mountFirstRun()
     // Nothing is reachable yet, and DeepSeek has no configured credential and
