@@ -549,6 +549,39 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'authorizationController',
+    summary: 'Host service backing the generated `ctx.remote.authorization` namespace.',
+    description: 'Host service backing the generated `ctx.remote.authorization` namespace.\n\nThe wire identity of a flow is its credential key. Its id segment names what the flow authorizes — for a provider route, the route id — which is how a configuration page attaches a sign-in to the row it belongs to.',
+    methods: [
+      {
+        signature: '@Remote // eslint-disable-next-line @typescript-eslint/require-await -- async so a synchronous refusal reaches the caller as a rejection async list(): Promise<AuthorizationEntryView[]>',
+        description: 'Every sign-in this deployment offers.',
+        parameters: [],
+        returns: 'one view per registered flow, with the methods it can run.',
+        throws: ['RemoteError when the authorization registry is not mounted.'],
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *start(key: string, method: string | undefined, signal: AbortSignal): AsyncIterable<AuthorizationFrame>',
+        description: 'Run one sign-in, streaming what it needs from the person watching.\n\nThe stream is the attempt: closing it withdraws the attempt, and a pending question is rejected rather than left waiting for a page that has gone.',
+        parameters: [{ name: 'key', description: 'the credential key to authorize, from {@link list}.' }, { name: 'method', description: 'which of the flow\'s methods to run; its first when omitted.' }, { name: 'signal', description: 'cancellation owned by the Remote stream carrier.' }],
+        returns: 'notices and questions, then exactly one terminal frame.',
+        throws: ['RemoteError when the request is invalid or the registry is not mounted.'],
+      },
+      {
+        signature: '@Remote // eslint-disable-next-line @typescript-eslint/require-await -- async so a synchronous refusal reaches the caller as a rejection async answer(promptId: string, value: string): Promise<void>',
+        description: 'Answer the question one running sign-in asked.',
+        parameters: [{ name: 'promptId', description: 'identity carried by the `prompt` frame.' }, { name: 'value', description: 'what the person typed or pasted.' }],
+        throws: ['RemoteError when no running attempt is waiting on that question.'],
+      },
+      {
+        signature: '@Remote // eslint-disable-next-line @typescript-eslint/require-await -- async so a synchronous refusal reaches the caller as a rejection async cancel(key: string): Promise<void>',
+        description: 'Withdraw one running sign-in.',
+        parameters: [{ name: 'key', description: 'the credential key whose attempt to withdraw.' }],
+        throws: ['RemoteError when the request is invalid or the registry is not mounted.'],
+      },
+    ],
+  },
+  {
     key: 'clientModules',
     summary: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index injection rows.',
     description: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index injection rows. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).',
@@ -3505,8 +3538,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AuthorizationEntry {\n    key: CredentialKey;\n    label: string;\n    methods: readonly AuthorizationMethod[];\n    inFlight: boolean;\n}',
   },
   {
+    name: 'AuthorizationEntryView',
+    declaration: 'export interface AuthorizationEntryView {\n    readonly key: string;\n    readonly subject: string;\n    readonly label: string;\n    readonly inFlight: boolean;\n    readonly methods: readonly AuthorizationMethodView[];\n}',
+  },
+  {
     name: 'AuthorizationFlow',
     declaration: 'export interface AuthorizationFlow {\n    readonly key: CredentialKey;\n    readonly label: string;\n    readonly methods: readonly [\n        AuthorizationMethod,\n        ...AuthorizationMethod[]\n    ];\n    run(session: AuthorizationSession): Promise<void>;\n}',
+  },
+  {
+    name: 'AuthorizationFrame',
+    declaration: 'export type AuthorizationFrame = {\n    readonly kind: \'notice\';\n    readonly message: string;\n    readonly url?: string;\n    readonly code?: string;\n} | {\n    readonly kind: \'prompt\';\n    readonly promptId: string;\n    readonly promptKind: \'text\' | \'secret\' | \'select\';\n    readonly message: string;\n    readonly placeholder?: string;\n    readonly options?: readonly AuthorizationOptionView[];\n} | {\n    readonly kind: \'prompt-withdrawn\';\n    readonly promptId: string;\n} | {\n    readonly kind: \'settled\';\n    readonly outcome: \'authorized\' | \'cancelled\' | \'failed\';\n    readonly message?: string;\n};',
   },
   {
     name: 'AuthorizationInteraction',
@@ -3517,8 +3558,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AuthorizationMethod {\n    id: string;\n    label: string;\n}',
   },
   {
+    name: 'AuthorizationMethodView',
+    declaration: 'export interface AuthorizationMethodView {\n    readonly id: string;\n    readonly label: string;\n}',
+  },
+  {
     name: 'AuthorizationNotice',
     declaration: 'export interface AuthorizationNotice {\n    message: string;\n    url?: string;\n    code?: string;\n}',
+  },
+  {
+    name: 'AuthorizationOptionView',
+    declaration: 'export interface AuthorizationOptionView {\n    readonly id: string;\n    readonly label: string;\n    readonly description?: string;\n}',
   },
   {
     name: 'AuthorizationOutcome',
